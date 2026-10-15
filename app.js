@@ -27,6 +27,7 @@
   let selected = dateKey(today);
   let cursor = new Date(today.getFullYear(),today.getMonth(),today.getDate());
   let view='month',modalOpen=false,toaster,activeTab='calendar',statsPeriod='week',deferredInstallPrompt=null;
+  let customFrom=dateKey(weekStart(today)),customTo=dateKey(addDays(weekStart(today),6));
 
   function load(){try{let raw=JSON.parse(localStorage.getItem(KEY)||'null');if(raw && Array.isArray(raw.students)&&Array.isArray(raw.sessions))return raw;}catch(e){console.warn('Невозможно прочитать локальную базу',e)}return {version:1,students:[],sessions:[]}}
   function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
@@ -45,17 +46,40 @@
       const lastWeekStart=weekStart(last);
       end=addDays(lastWeekStart,6);
       $('period-label').textContent=`${MONTHS_HEAD[cursor.getMonth()]} ${cursor.getFullYear()}`;
-    }else{
+    }else if(view==='week'){
       begin=weekStart(cursor);end=addDays(begin,6);
       $('period-label').textContent=begin.getMonth()===end.getMonth()?`${begin.getDate()}–${end.getDate()} ${MONTHS[begin.getMonth()]}`:`${begin.getDate()} ${MONTHS[begin.getMonth()]} – ${end.getDate()} ${MONTHS[end.getMonth()]}`;
+    }else{
+      begin=weekStart(dateObj(customFrom));end=addDays(weekStart(dateObj(customTo)),6);
+      $('period-label').textContent=fmtDay(customFrom)+' – '+fmtDay(customTo);
     }
     for(let d=begin;d<=end;d=addDays(d,1)){
-      const key=dateKey(d),s=sessionsOn(key),isOutside=view==='month' && d.getMonth()!==cursor.getMonth();
+      const key=dateKey(d),s=sessionsOn(key),isOutside=(view==='month'&&d.getMonth()!==cursor.getMonth())||(view==='custom'&&(key<customFrom||key>customTo));
       const balls=s.slice(0,3).map(x=>`<span class="event-ball ${x.status==='cancelled'?'cancelled':x.status==='done'?'done':''}" title="${esc(STATUSES[x.status]||STATUSES.planned)}"></span>`).join('');
       days.push(`<button class="calendar-day${key===selected?' selected':''}${key===dateKey(today)?' today':''}${isOutside?' outside':''}" role="gridcell" data-day="${key}" aria-label="${esc(fmtDay(key))}, тренировок: ${s.length}" aria-selected="${key===selected}"><span class="number">${d.getDate()}</span><span class="dotrow">${balls}${s.length>3?`<span class="count-label">+${s.length-3}</span>`:''}</span></button>`);
     }
     grid.innerHTML=days.join('');
-    $('view-month').classList.toggle('active',view==='month');$('view-week').classList.toggle('active',view==='week');$('view-month').setAttribute('aria-pressed',String(view==='month'));$('view-week').setAttribute('aria-pressed',String(view==='week'));
+    for(const mode of ['month','week','custom']){const btn=$('view-'+mode),active=view===mode;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active))}
+    $('calendar-custom-pickers').hidden=view!=='custom';
+  }
+  function changeCustomPeriod(){
+    const from=$('calendar-from').value,to=$('calendar-to').value;
+    if(!from||!to)return;
+    if(from>to){toast('Дата окончания должна быть не раньше начала');return}
+    const days=Math.round((Date.parse(to+'T00:00:00Z')-Date.parse(from+'T00:00:00Z'))/86400000);
+    if(days>365){toast('Выбери период не более 366 дней');return}
+    customFrom=from;customTo=to;selected=from;cursor=dateObj(from);render();
+  }
+  function shiftCalendar(direction){
+    if(view==='custom'){
+      const days=Math.round((Date.parse(customTo+'T00:00:00Z')-Date.parse(customFrom+'T00:00:00Z'))/86400000)+1;
+      customFrom=dateKey(addDays(dateObj(customFrom),days*direction));
+      customTo=dateKey(addDays(dateObj(customTo),days*direction));
+      $('calendar-from').value=customFrom;$('calendar-to').value=customTo;
+      selected=customFrom;cursor=dateObj(selected);render();return;
+    }
+    cursor=view==='month'?new Date(cursor.getFullYear(),cursor.getMonth()+direction,1):addDays(cursor,7*direction);
+    renderCalendar();
   }
   function renderDay(){const group=sessionsOn(selected);$('selected-day-heading').textContent=`${fmtDay(selected)} · ${dow(selected)}`;
     if(!group.length){$('day-sessions').innerHTML='<div class="empty-state"><div><strong>В этот день нет тренировок</strong><br>Выбери другое число или создай запись.</div><span class="event-ball" aria-hidden="true"></span></div>';return}
@@ -222,8 +246,15 @@
   }
   function bind(){
     initStats();$('tab-calendar').onclick=()=>showTab('calendar');$('tab-stats').onclick=()=>showTab('stats');window.visualViewport?.addEventListener('resize',syncModalViewport);$('add-session').onclick=()=>sessionForm();$('add-on-selected').onclick=()=>sessionForm();$('add-student').onclick=showAddStudent;$('tools-btn').onclick=showTools;
-    $('view-month').onclick=()=>{view='month';cursor=dateObj(selected);renderCalendar()};$('view-week').onclick=()=>{view='week';cursor=dateObj(selected);renderCalendar()};
-    $('prev-period').onclick=()=>{cursor=view==='month'?new Date(cursor.getFullYear(),cursor.getMonth()-1,1):addDays(cursor,-7);renderCalendar()};$('next-period').onclick=()=>{cursor=view==='month'?new Date(cursor.getFullYear(),cursor.getMonth()+1,1):addDays(cursor,7);renderCalendar()};$('today').onclick=()=>{selected=dateKey(today);cursor=new Date(today.getFullYear(),today.getMonth(),today.getDate());render()};
+    $('view-month').onclick=()=>{view='month';cursor=dateObj(selected);renderCalendar()};
+    $('view-week').onclick=()=>{view='week';cursor=dateObj(selected);renderCalendar()};
+    $('view-custom').onclick=()=>{view='custom';$('calendar-from').value=customFrom;$('calendar-to').value=customTo;renderCalendar()};
+    $('calendar-from').value=customFrom;$('calendar-to').value=customTo;
+    $('calendar-from').addEventListener('change',changeCustomPeriod);
+    $('calendar-to').addEventListener('change',changeCustomPeriod);
+    $('prev-period').onclick=()=>shiftCalendar(-1);
+    $('next-period').onclick=()=>shiftCalendar(1);
+    $('today').onclick=()=>{selected=dateKey(today);cursor=dateObj(selected);if(view==='custom'){customFrom=selected;customTo=dateKey(addDays(today,6));$('calendar-from').value=customFrom;$('calendar-to').value=customTo}render()};
     $('calendar-grid').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;cursor=dateObj(selected);render()});$('day-sessions').addEventListener('click',e=>{const b=e.target.closest('[data-session]');if(b)sessionDetail(b.dataset.session)});
     $('close-modal').onclick=close;$('modal-backdrop').onclick=e=>{if(e.target===$('modal-backdrop')||e.target.closest('[data-close]'))close()};document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
     window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event});
