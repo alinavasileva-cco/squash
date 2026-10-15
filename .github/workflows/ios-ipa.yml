@@ -29,7 +29,7 @@ jobs:
       - name: Create Squash Hub icon
         run: swift ios/make_icon.swift ios/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png
       - name: Generate iOS app project
-        run: xcodegen generate --spec ios/project.yml --project ios/SquashHub.xcodeproj
+        run: cd ios && xcodegen generate --spec project.yml
       - name: Build unsigned device app
         run: |
           set -euo pipefail
