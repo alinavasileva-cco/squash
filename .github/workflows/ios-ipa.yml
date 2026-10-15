@@ -1,0 +1,54 @@
+name: Build iPhone IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-ipa.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ios-ipa:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
+          xcodegen --version
+      - name: Create Squash Hub icon
+        run: swift ios/make_icon.swift ios/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+      - name: Generate iOS app project
+        run: xcodegen generate --spec ios/project.yml --project ios/SquashHub.xcodeproj
+      - name: Build unsigned device app
+        run: |
+          set -euo pipefail
+          xcodebuild -project ios/SquashHub.xcodeproj -scheme SquashHub -configuration Release \
+            -sdk iphoneos -derivedDataPath "$RUNNER_TEMP/SquashHubBuild" \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Package IPA (unsigned)
+        run: |
+          set -euo pipefail
+          mkdir -p build/Payload
+          cp -R "$RUNNER_TEMP/SquashHubBuild/Build/Products/Release-iphoneos/SquashHub.app" build/Payload/
+          cd build
+          zip -qr Squash-Hub-iPhone-unsigned.ipa Payload
+          unzip -t Squash-Hub-iPhone-unsigned.ipa | tail -2
+          du -h Squash-Hub-iPhone-unsigned.ipa
+      - name: Upload iPhone package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Squash-Hub-iPhone-unsigned-IPA
+          path: build/Squash-Hub-iPhone-unsigned.ipa
+          retention-days: 30
+          if-no-files-found: error
