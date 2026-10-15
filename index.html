@@ -37,7 +37,11 @@
       </nav>
       <div id="calendar-content" role="tabpanel" aria-labelledby="tab-calendar">
       <section class="calendar-area" aria-labelledby="calendar-heading">
-        <div class="section-top"><div><span class="section-kicker">COURT SCHEDULE</span><h2 id="calendar-heading">Календарь</h2></div><div class="view-switch" role="group" aria-label="Режим календаря"><button id="view-month" aria-pressed="true" class="active">Месяц</button><button id="view-week" aria-pressed="false">Неделя</button></div></div>
+        <div class="section-top"><div><span class="section-kicker">COURT SCHEDULE</span><h2 id="calendar-heading">Календарь</h2></div><div class="view-switch" role="group" aria-label="Режим календаря"><button id="view-month" aria-pressed="true" class="active">Месяц</button><button id="view-week" aria-pressed="false">Неделя</button><button id="view-custom" aria-pressed="false">Свой период</button></div></div>
+        <div id="calendar-custom-pickers" class="calendar-custom-pickers" hidden>
+          <label>С <input type="date" id="calendar-from" aria-label="Начало периода календаря"></label>
+          <label>По <input type="date" id="calendar-to" aria-label="Конец периода календаря"></label>
+        </div>
         <div class="calendar-board">
           <div class="calendar-navigation"><div class="nav-title" id="period-label"></div><div class="nav-buttons"><button id="prev-period" aria-label="Предыдущий период">‹</button><button id="today" class="today-btn">Сегодня</button><button id="next-period" aria-label="Следующий период">›</button></div></div>
           <div class="weekday-row" aria-hidden="true"><span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>ВС</span></div>
