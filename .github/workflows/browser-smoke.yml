@@ -1,0 +1,32 @@
+name: Browser smoke tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'app.js'
+      - 'styles.css'
+      - '.github/workflows/browser-smoke.yml'
+      - 'tests/browser-smoke.cjs'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock playwright-core
+      - name: Test actual mobile calendar
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 &
+          echo $! > /tmp/squash-serve.pid
+          node tests/browser-smoke.cjs

@@ -261,7 +261,7 @@
     window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;const help=$('install-help');if(help)help.textContent='Squash Hub установлен. Открой его с главного экрана телефона.'});
     if('serviceWorker' in navigator && window.isSecureContext)navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
-  bind();render();
+  render();bind();
   // Safe, non-mutating diagnostics for development; not exposed in the UI.
   window.__squashDiagnostics=Object.freeze({sessionCount:()=>data.sessions.length,studentCount:()=>data.students.length,priceOf:(type,count=1,rate=null)=>amountOf({type,count,groupRate:rate,rateConfirmed:!!rate})});
 })();
