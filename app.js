@@ -9,6 +9,8 @@
   const MONTHS_HEAD = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
   const TYPES = {first:'Первичная',individual:'Индивидуальная',group:'Групповая'};
   const STATUSES = {planned:'Запланирована',done:'Проведена',cancelled:'Отменена'};
+  // Squash grades vary by federation; these are practical club categories, not a universal ranking.
+  const SQUASH_LEVELS = ['Pre-Beginner','Beginner','D','C','B','A','AA'];
   const today = new Date();
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
@@ -24,7 +26,7 @@
   let data=load();
   let selected = dateKey(today);
   let cursor = new Date(today.getFullYear(),today.getMonth(),today.getDate());
-  let view='month',modalOpen=false,toaster;
+  let view='month',modalOpen=false,toaster,activeTab='calendar',statsPeriod='week';
 
   function load(){try{let raw=JSON.parse(localStorage.getItem(KEY)||'null');if(raw && Array.isArray(raw.students)&&Array.isArray(raw.sessions))return raw;}catch(e){console.warn('Невозможно прочитать локальную базу',e)}return {version:1,students:[],sessions:[]}}
   function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
@@ -35,7 +37,7 @@
   function amountOf(s){if(s.type==='first')return 1200;if(s.type==='individual')return 1700;if(s.type==='group' && s.rateConfirmed && s.groupRate>0 && s.count>0)return s.groupRate*s.count;return null}
   function timeOf(s){return (s.start||'').slice(11,16) || '—:—'}
   function sessionsOn(k){return data.sessions.filter(s=>(s.start||'').slice(0,10)===k).sort((a,b)=>a.start.localeCompare(b.start))}
-  function render(){renderCalendar();renderDay()}
+  function render(){renderCalendar();renderDay();renderStats()}
   function renderCalendar(){const grid=$('calendar-grid');let days=[];let begin,end;
     if(view==='month'){
       const d=new Date(cursor.getFullYear(),cursor.getMonth(),1);
@@ -60,7 +62,24 @@
     $('day-sessions').innerHTML=group.map(s=>{const amount=amountOf(s);const inf=[TYPES[s.type]||'Тренировка',STATUSES[s.status]||STATUSES.planned,amount===null?'Тариф не указан':money(amount)].join(' · ');
       return `<div class="session-card"><span class="event-ball ${s.status==='cancelled'?'cancelled':s.status==='done'?'done':''}" aria-hidden="true"></span><div class="session-time">${esc(timeOf(s))}</div><div class="session-info"><div class="session-title ${s.status==='cancelled'?'cancelled':''}">${esc(titleOf(s))}</div><div class="session-sub">${esc(inf)}</div></div><button type="button" class="session-more" aria-label="Действия с тренировкой" data-session="${esc(s.id)}">···</button></div>`}).join('');
   }
-  function show(title,kicker,content){$('modal-title').textContent=title;$('modal-kicker').textContent=kicker||'SQUASH HUB';$('modal-content').innerHTML=`<div class="modal-body">${content}</div>`;$('modal-backdrop').hidden=false;document.body.classList.add('dialog-open');modalOpen=true;}
+  function show(title,kicker,content){
+    $('modal-title').textContent=title;$('modal-kicker').textContent=kicker||'SQUASH HUB';
+    $('modal-content').innerHTML=`<div class="modal-body">${content}</div>`;
+    const footer=$('modal-footer');footer.replaceChildren();
+    const actions=$('modal-content').querySelector('.modal-actions');
+    if(actions){
+      const form=actions.closest('form');
+      if(form?.id)actions.querySelectorAll('button[type="submit"]').forEach(button=>button.setAttribute('form',form.id));
+      footer.append(actions);footer.hidden=false;
+    }else footer.hidden=true;
+    $('modal-backdrop').hidden=false;document.body.classList.add('dialog-open');modalOpen=true;
+    $('modal-content').scrollTop=0;
+    syncModalViewport();
+  }
+  function syncModalViewport(){
+    const h=window.visualViewport?.height||window.innerHeight;
+    document.documentElement.style.setProperty('--modal-viewport',`${Math.floor(h)}px`);
+  }
   function close(){if(!modalOpen)return;$('modal-backdrop').hidden=true;document.body.classList.remove('dialog-open');modalOpen=false}
   function field(label,control){return `<div class="field"><span>${label}</span>${control}</div>`}
   function actionRow(submitText='Сохранить',danger=false){return `<div class="modal-actions"><button type="button" class="btn btn-secondary" data-close>Назад</button><button type="submit" class="btn ${danger?'btn-danger':'btn-primary'}">${esc(submitText)}</button></div>`}
@@ -115,7 +134,7 @@
   }
   function showAddStudent(){show('Добавить ученика','УЧЕНИКИ / НОВАЯ КАРТОЧКА',`<form id="student-form"><div id="form-error"></div>
     ${field('Имя ученика',`<input id="student-name" maxlength="90" placeholder="Как зовут ученика?" required autofocus>`)}
-    ${field('Уровень (необязательно)',`<select id="student-level"><option value="">Не указан</option><option>Начинающий</option><option>Продвинутый начинающий</option><option>Средний</option><option>Продвинутый</option></select>`)}
+    ${field('Уровень (необязательно)',`<select id="student-level"><option value="">Не указан</option>${SQUASH_LEVELS.map(level=>`<option value="${esc(level)}">${esc(level)}</option>`).join('')}</select>`)}
     ${field('Последний материал',`<input id="student-drill" maxlength="180" placeholder="Например, боусты">`)}
     ${field('Как часто занимается',`<input id="student-frequency" maxlength="100" placeholder="Например, раз в 10 дней">`)}
     ${field('Заметки (необязательно)',`<textarea id="student-notes" rows="2" placeholder="Что важно помнить"></textarea>`)}
@@ -124,8 +143,27 @@
     $('existing-students').innerHTML=data.students.length?`<span class="muted">Уже в списке: ${data.students.length}</span><div class="student-list" style="margin-top:9px">${data.students.map(s=>`<button data-student-detail="${esc(s.id)}"><strong>${esc(s.name)}</strong><small>${esc(s.level||'Уровень не указан')}</small></button>`).join('')}</div>`:'';
     document.querySelectorAll('[data-student-detail]').forEach(b=>b.onclick=()=>studentDetail(b.dataset.studentDetail));
   }
-  function studentDetail(studentId){const s=studentsById(studentId);if(!s)return;const ss=data.sessions.filter(x=>(x.studentIds||[]).includes(studentId));show(s.name,'КАРТОЧКА УЧЕНИКА',`<div class="simple-note">${esc(s.level||'Уровень не указан')} ${s.frequency?` · ${esc(s.frequency)}`:''}</div><p><strong>Последний материал:</strong> ${esc(s.lastDrill||'—')}</p><p><strong>Заметки:</strong> ${esc(s.notes||'—')}</p><p><strong>Тренировок:</strong> ${ss.length}</p><div class="student-list">${ss.slice().sort((a,b)=>b.start.localeCompare(a.start)).map(x=>`<button data-session="${esc(x.id)}"><strong>${esc(fmtDay(x.start))} · ${esc(timeOf(x))}</strong><small>${esc(TYPES[x.type])} · ${esc(STATUSES[x.status])}</small></button>`).join('')}</div><div class="modal-actions"><button class="btn btn-secondary" data-close>Закрыть</button></div>`);
+  function studentDetail(studentId){const s=studentsById(studentId);if(!s)return;const ss=data.sessions.filter(x=>(x.studentIds||[]).includes(studentId));show(s.name,'КАРТОЧКА УЧЕНИКА',`<div class="simple-note">${esc(s.level||'Уровень не указан')} ${s.frequency?` · ${esc(s.frequency)}`:''}</div><p><strong>Последний материал:</strong> ${esc(s.lastDrill||'—')}</p><p><strong>Заметки:</strong> ${esc(s.notes||'—')}</p><p><strong>Тренировок:</strong> ${ss.length}</p><button type="button" class="btn btn-secondary" id="edit-student">Изменить уровень и заметки</button><div class="student-list">${ss.slice().sort((a,b)=>b.start.localeCompare(a.start)).map(x=>`<button data-session="${esc(x.id)}"><strong>${esc(fmtDay(x.start))} · ${esc(timeOf(x))}</strong><small>${esc(TYPES[x.type])} · ${esc(STATUSES[x.status])}</small></button>`).join('')}</div><div class="modal-actions"><button class="btn btn-secondary" data-close>Закрыть</button></div>`);
     document.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>sessionDetail(b.dataset.session));
+    $('edit-student').onclick=()=>editStudent(studentId);
+  }
+  function editStudent(studentId){
+    const s=studentsById(studentId);if(!s)return;
+    const allLevels=[...SQUASH_LEVELS];if(s.level&&!allLevels.includes(s.level))allLevels.unshift(s.level);
+    show('Изменить ученика','КАРТОЧКА УЧЕНИКА',`<form id="edit-student-form">
+      ${field('Имя',`<input id="edit-name" required maxlength="90" value="${esc(s.name)}">`)}
+      ${field('Уровень сквоша',`<select id="edit-level"><option value="">Не указан</option>${allLevels.map(x=>`<option value="${esc(x)}" ${x===s.level?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
+      ${field('Последний материал',`<input id="edit-drill" maxlength="180" value="${esc(s.lastDrill)}">`)}
+      ${field('Периодичность',`<input id="edit-frequency" maxlength="100" value="${esc(s.frequency)}">`)}
+      ${field('Заметки',`<textarea id="edit-notes" rows="3">${esc(s.notes)}</textarea>`)}
+      ${actionRow('Сохранить')}
+      </form>`);
+    $('edit-student-form').onsubmit=e=>{e.preventDefault();const nm=$('edit-name').value.trim();
+      if(!nm){toast('Введите имя');return}
+      if(data.students.some(x=>x.id!==s.id&&x.name.toLowerCase()===nm.toLowerCase())){toast('Ученик с таким именем уже есть');return}
+      s.name=nm;s.level=$('edit-level').value;s.lastDrill=$('edit-drill').value.trim();s.frequency=$('edit-frequency').value.trim();s.notes=$('edit-notes').value.trim();
+      save();close();toast('Данные ученика сохранены');
+    };
   }
   function pickFor(kind){const entries=data.sessions.filter(x=>kind==='cancel'?x.status==='planned':true).sort((a,b)=>b.start.localeCompare(a.start));const title=kind==='cancel'?'Отменить тренировку':'Удалить тренировку';const sub=kind==='cancel'?'Выбери запись, которая не состоится. Она останется в истории.':'Удаление необратимо. Отмена сохраняет историю.';
     show(title,'КАЛЕНДАРЬ / УПРАВЛЕНИЕ',`<p class="muted">${sub}</p>${entries.length?entries.map(x=>`<button class="list-choice" data-action-pick="${kind}" data-session-id="${esc(x.id)}"><strong>${esc(fmtDay(x.start))} · ${esc(timeOf(x))} — ${esc(titleOf(x))}</strong><small>${esc(TYPES[x.type]||'Тренировка')} · ${esc(STATUSES[x.status]||'Запланирована')}</small></button>`).join(''):'<div class="simple-note">Подходящих тренировок нет</div>'}<div class="modal-actions"><button class="btn btn-secondary" data-close>Закрыть</button></div>`);
@@ -144,8 +182,45 @@
     $('backup-import').onclick=()=>$('backup-file').click();
     $('backup-file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const raw=JSON.parse(await file.text());if(!Array.isArray(raw.students)||!Array.isArray(raw.sessions)||raw.students.length>10000||raw.sessions.length>100000)throw Error('Неверный формат');if(!raw.students.every(x=>typeof x.id==='string'&&typeof x.name==='string')||!raw.sessions.every(x=>typeof x.id==='string'&&typeof x.start==='string'&&TYPES[x.type]&&STATUSES[x.status]))throw Error('Неверный формат записей');if(!confirm('Заменить текущие записи данными из файла? Текущие записи будут перезаписаны.'))return;data={version:1,students:raw.students,sessions:raw.sessions};save();close();toast('Данные восстановлены')}catch(err){toast('Не удалось прочитать резервную копию')}};
   }
+  function showTab(next){
+    activeTab=next;
+    $('calendar-content').hidden=next!=='calendar';$('stats-view').hidden=next!=='stats';
+    for(const key of ['calendar','stats']){const btn=$(`tab-${key}`);const selected=next===key;btn.classList.toggle('active',selected);btn.setAttribute('aria-selected',String(selected));btn.tabIndex=selected?0:-1}
+    if(next==='stats')renderStats();
+  }
+  function initStats(){
+    const monday=weekStart(today);
+    $('stats-from').value=dateKey(monday);$('stats-to').value=dateKey(addDays(monday,6));
+    document.querySelectorAll('[data-stats-period]').forEach(b=>b.addEventListener('click',()=>{statsPeriod=b.dataset.statsPeriod;
+      const start=statsPeriod==='month'?new Date(today.getFullYear(),today.getMonth(),1):weekStart(today),
+            end=statsPeriod==='month'?new Date(today.getFullYear(),today.getMonth()+1,0):addDays(start,6);
+      if(statsPeriod!=='custom'){$('stats-from').value=dateKey(start);$('stats-to').value=dateKey(end)}
+      renderStats();
+    }));
+    for(const id of ['stats-from','stats-to'])$(id).addEventListener('change',()=>{statsPeriod='custom';renderStats()});
+  }
+  function repeatFor(s){
+    if(s.status==='cancelled'||!(s.studentIds||[]).length)return false;
+    return data.sessions.some(previous=>previous.id!==s.id&&previous.status!=='cancelled'&&previous.start<s.start&&(previous.studentIds||[]).some(i=>(s.studentIds||[]).includes(i)));
+  }
+  function renderStats(){
+    if(!$('stats-from')||!$('stats-to'))return;
+    document.querySelectorAll('[data-stats-period]').forEach(b=>b.classList.toggle('active',b.dataset.statsPeriod===statsPeriod));
+    const from=$('stats-from').value,to=$('stats-to').value;
+    const filtered=from&&to&&from<=to?data.sessions.filter(s=>{const date=(s.start||'').slice(0,10);return date>=from&&date<=to}):[];
+    const planned=filtered.filter(s=>s.status==='planned'),done=filtered.filter(s=>s.status==='done'),cancelled=filtered.filter(s=>s.status==='cancelled');
+    const earning=done.reduce((sum,s)=>sum+(amountOf(s)||0),0),pending=planned.reduce((sum,s)=>sum+(amountOf(s)||0),0);
+    const repeated=filtered.filter(repeatFor).length;
+    $('stats-period-label').textContent=from&&to&&from<=to?`${fmtDay(from)} — ${fmtDay(to)}`:'Выбери корректный период';
+    $('stats-period-count').textContent=`${filtered.length} ${filtered.length===1?'тренировка':'тренировок'}`;
+    $('stats-earned').textContent=money(earning);$('stats-planned-amount').textContent=money(pending);
+    $('stats-planned-count').textContent=planned.length;$('stats-done-count').textContent=done.length;
+    $('stats-cancelled-count').textContent=cancelled.length;$('stats-repeat-count').textContent=repeated;
+    const unpriced=filtered.filter(s=>s.type==='group'&&s.status!=='cancelled'&&amountOf(s)===null).length;
+    const warn=$('stats-rate-warning');warn.hidden=!unpriced;warn.textContent=unpriced?`Групповых тренировок без подтверждённой ставки: ${unpriced}. Они пока не учтены в суммах.`:'';
+  }
   function bind(){
-    $('add-session').onclick=()=>sessionForm();$('add-on-selected').onclick=()=>sessionForm();$('cancel-session').onclick=()=>pickFor('cancel');$('delete-session').onclick=()=>pickFor('delete');$('add-student').onclick=showAddStudent;$('tools-btn').onclick=showTools;
+    initStats();$('tab-calendar').onclick=()=>showTab('calendar');$('tab-stats').onclick=()=>showTab('stats');window.visualViewport?.addEventListener('resize',syncModalViewport);$('add-session').onclick=()=>sessionForm();$('add-on-selected').onclick=()=>sessionForm();$('cancel-session').onclick=()=>pickFor('cancel');$('delete-session').onclick=()=>pickFor('delete');$('add-student').onclick=showAddStudent;$('tools-btn').onclick=showTools;
     $('view-month').onclick=()=>{view='month';cursor=dateObj(selected);renderCalendar()};$('view-week').onclick=()=>{view='week';cursor=dateObj(selected);renderCalendar()};
     $('prev-period').onclick=()=>{cursor=view==='month'?new Date(cursor.getFullYear(),cursor.getMonth()-1,1):addDays(cursor,-7);renderCalendar()};$('next-period').onclick=()=>{cursor=view==='month'?new Date(cursor.getFullYear(),cursor.getMonth()+1,1):addDays(cursor,7);renderCalendar()};$('today').onclick=()=>{selected=dateKey(today);cursor=new Date(today.getFullYear(),today.getMonth(),today.getDate());render()};
     $('calendar-grid').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;cursor=dateObj(selected);render()});$('day-sessions').addEventListener('click',e=>{const b=e.target.closest('[data-session]');if(b)sessionDetail(b.dataset.session)});
