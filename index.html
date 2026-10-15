@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171915">
+  <meta name="description" content="Личный календарь сквош-тренера: запись, отмена, ученики и доход">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Squash Hub">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Squash Hub — календарь тренера</title>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true"><span class="ball"><i></i><i></i></span></div>
+        <div><span class="brand-overline">SQUASH HUB / TRAINER</span><div class="brand-name">Мой календарь<span class="brand-dot">.</span></div></div>
+      </div>
+      <button class="round-button" id="tools-btn" aria-label="Резервная копия и установка" title="Настройки"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/></svg></button>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-accent" aria-hidden="true"></div>
+        <div class="hero-eyebrow">ЛИЧНОЕ РАСПИСАНИЕ</div>
+        <h1>Игра начинается<br><span>с расписания.</span></h1>
+        <p>Только тренировки. Ничего лишнего.</p>
+      </section>
+
+      <section class="actions" aria-label="Действия">
+        <button id="add-session" class="action action-primary"><span class="action-icon">＋</span><span>Записать<br>тренировку</span><span class="action-arrow">↗</span></button>
+        <button id="cancel-session" class="action"><span class="action-icon">×</span><span>Отменить<br>тренировку</span><span class="action-arrow">↗</span></button>
+        <button id="delete-session" class="action"><span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><span>Удалить<br>тренировку</span><span class="action-arrow">↗</span></button>
+        <button id="add-student" class="action"><span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-4 2.5-6 6.5-6s6.5 2 6.5 6m3-10v8m-4-4h8"/></svg></span><span>Добавить<br>ученика</span><span class="action-arrow">↗</span></button>
+      </section>
+
+      <section class="calendar-area" aria-labelledby="calendar-heading">
+        <div class="section-top"><div><span class="section-kicker">COURT SCHEDULE</span><h2 id="calendar-heading">Календарь</h2></div><div class="view-switch" role="group" aria-label="Режим календаря"><button id="view-month" aria-pressed="true" class="active">Месяц</button><button id="view-week" aria-pressed="false">Неделя</button></div></div>
+        <div class="calendar-board">
+          <div class="calendar-navigation"><div class="nav-title" id="period-label"></div><div class="nav-buttons"><button id="prev-period" aria-label="Предыдущий период">‹</button><button id="today" class="today-btn">Сегодня</button><button id="next-period" aria-label="Следующий период">›</button></div></div>
+          <div class="weekday-row" aria-hidden="true"><span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>ВС</span></div>
+          <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="Дни тренировок"></div>
+          <div class="calendar-legend"><span><i class="legend-ball"></i>Запланирована</span><span><i class="legend-done"></i>Проведена</span><span><i class="legend-cancel"></i>Отменена</span></div>
+        </div>
+      </section>
+
+      <section class="day-section" aria-labelledby="selected-day-heading"><div class="section-top day-top"><div><span class="section-kicker">ТРЕНИРОВКИ НА ДЕНЬ</span><h2 id="selected-day-heading">Сегодня</h2></div><button class="text-action" id="add-on-selected">＋ Записать</button></div><div id="day-sessions" class="day-sessions"></div></section>
+      <footer>PRIVATE COACHING SPACE <span>● ●</span> SQUASH HUB</footer>
+    </main>
+  </div>
+
+  <div id="modal-backdrop" class="modal-backdrop" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><div><div class="section-kicker" id="modal-kicker">SQUASH HUB</div><h2 id="modal-title">Новая тренировка</h2></div><button class="modal-close" id="close-modal" aria-label="Закрыть">×</button></div><div id="modal-content"></div></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
