@@ -20,7 +20,7 @@
     <header class="topbar">
       <div class="brand">
         <div class="brand-logo" aria-hidden="true"><span class="ball"><i></i><i></i></span></div>
-        <div><span class="brand-overline">SQUASH HUB / TRAINER</span><div class="brand-name">Мой календарь<span class="brand-dot">.</span></div></div>
+        <div><span class="brand-overline">SQUASH HUB · АННА БЕСПАЛЬЧУК</span><div class="brand-name">Тренер Анна Беспальчук<span class="brand-dot">.</span></div></div>
       </div>
       <button class="round-button" id="tools-btn" aria-label="Резервная копия и установка" title="Настройки"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/></svg></button>
     </header>
@@ -40,6 +40,11 @@
         <button id="add-student" class="action"><span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-4 2.5-6 6.5-6s6.5 2 6.5 6m3-10v8m-4-4h8"/></svg></span><span>Добавить<br>ученика</span><span class="action-arrow">↗</span></button>
       </section>
 
+      <nav class="main-tabs" role="tablist" aria-label="Разделы приложения">
+        <button id="tab-calendar" class="main-tab active" role="tab" aria-selected="true" aria-controls="calendar-content">Календарь</button>
+        <button id="tab-stats" class="main-tab" role="tab" aria-selected="false" aria-controls="stats-view">Статистика и доход <span class="tab-dot" aria-hidden="true"></span></button>
+      </nav>
+      <div id="calendar-content" role="tabpanel" aria-labelledby="tab-calendar">
       <section class="calendar-area" aria-labelledby="calendar-heading">
         <div class="section-top"><div><span class="section-kicker">COURT SCHEDULE</span><h2 id="calendar-heading">Календарь</h2></div><div class="view-switch" role="group" aria-label="Режим календаря"><button id="view-month" aria-pressed="true" class="active">Месяц</button><button id="view-week" aria-pressed="false">Неделя</button></div></div>
         <div class="calendar-board">
@@ -51,11 +56,32 @@
       </section>
 
       <section class="day-section" aria-labelledby="selected-day-heading"><div class="section-top day-top"><div><span class="section-kicker">ТРЕНИРОВКИ НА ДЕНЬ</span><h2 id="selected-day-heading">Сегодня</h2></div><button class="text-action" id="add-on-selected">＋ Записать</button></div><div id="day-sessions" class="day-sessions"></div></section>
-      <footer>PRIVATE COACHING SPACE <span>● ●</span> SQUASH HUB</footer>
+      </div>
+      <section id="stats-view" class="stats-view" role="tabpanel" aria-labelledby="tab-stats" hidden>
+        <div class="stats-heading"><span class="section-kicker">SQUASH HUB / ANALYTICS</span><h2>Статистика тренировок</h2><p>Выбери период — все показатели пересчитаются автоматически.</p></div>
+        <div class="stats-filters">
+          <div class="stats-period-toggle" role="group" aria-label="Период статистики">
+            <button class="active" data-stats-period="week">Неделя</button><button data-stats-period="month">Месяц</button><button data-stats-period="custom">Свой период</button>
+          </div>
+          <div class="stats-date-pickers"><label>С <input id="stats-from" type="date"></label><label>По <input id="stats-to" type="date"></label></div>
+        </div>
+        <div class="stats-summary" aria-live="polite"><span id="stats-period-label"></span><strong id="stats-period-count"></strong></div>
+        <div class="stats-cards">
+          <div class="stats-card stats-card-dark"><span>Заработано</span><strong id="stats-earned">0 ₽</strong><small>Только проведённые</small></div>
+          <div class="stats-card stats-card-yellow"><span>В плане</span><strong id="stats-planned-amount">0 ₽</strong><small>Запланированные тренировки</small></div>
+          <div class="stats-card"><span>Запланировано</span><strong id="stats-planned-count">0</strong><small>Ещё не проведены</small></div>
+          <div class="stats-card"><span>Проведено</span><strong id="stats-done-count">0</strong><small>Завершённые занятия</small></div>
+          <div class="stats-card"><span>Отменено</span><strong id="stats-cancelled-count">0</strong><small>Сохраняются в истории</small></div>
+          <div class="stats-card"><span>Повторные</span><strong id="stats-repeat-count">0</strong><small>Ученики уже были ранее</small></div>
+        </div>
+        <div id="stats-rate-warning" class="stats-warning" hidden></div>
+        <div class="stats-notes">Повторной считается тренировка с учеником, у которого есть более ранняя неотменённая запись. Если в группе ученики не названы, повторность определить нельзя.</div>
+      </section>
+      <footer>ТРЕНЕР АННА БЕСПАЛЬЧУК <span>● ●</span> SQUASH HUB</footer>
     </main>
   </div>
 
-  <div id="modal-backdrop" class="modal-backdrop" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><div><div class="section-kicker" id="modal-kicker">SQUASH HUB</div><h2 id="modal-title">Новая тренировка</h2></div><button class="modal-close" id="close-modal" aria-label="Закрыть">×</button></div><div id="modal-content"></div></div></div>
+  <div id="modal-backdrop" class="modal-backdrop" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><div><div class="section-kicker" id="modal-kicker">SQUASH HUB</div><h2 id="modal-title">Новая тренировка</h2></div><button class="modal-close" id="close-modal" aria-label="Закрыть">×</button></div><div id="modal-content" class="modal-scroll"></div><div id="modal-footer" class="modal-footer" hidden></div></div></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
