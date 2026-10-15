@@ -10,7 +10,7 @@
   const TYPES = {first:'Первичная',individual:'Индивидуальная',group:'Групповая'};
   const STATUSES = {planned:'Запланирована',done:'Проведена',cancelled:'Отменена'};
   // Squash grades vary by federation; these are practical club categories, not a universal ranking.
-  const SQUASH_LEVELS = ['Pre-Beginner','Beginner','D','C','B','A','AA'];
+  const SQUASH_LEVELS = ['Pre-Beginner','Beginner','B'];
   const today = new Date();
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
@@ -34,7 +34,7 @@
   function studentsById(studentId){return data.students.find(s=>s.id===studentId)}
   function nameOf(s){return (s.studentIds||[]).map(studentsById).filter(Boolean).map(x=>x.name).join(' + ')||s.label||((s.type==='group')?'Групповая тренировка':'Ученик не указан')}
   function titleOf(s){return nameOf(s)}
-  function amountOf(s){if(s.type==='first')return 1200;if(s.type==='individual')return 1700;if(s.type==='group' && s.rateConfirmed && s.groupRate>0 && s.count>0)return s.groupRate*s.count;return null}
+  function amountOf(s){if(s.type==='first')return 1200;if(s.type==='individual')return 1900;if(s.type==='group' && s.rateConfirmed && s.groupRate>0 && s.count>0)return s.groupRate*s.count;return null}
   function timeOf(s){return (s.start||'').slice(11,16) || '—:—'}
   function sessionsOn(k){return data.sessions.filter(s=>(s.start||'').slice(0,10)===k).sort((a,b)=>a.start.localeCompare(b.start))}
   function render(){renderCalendar();renderDay();renderStats()}
@@ -149,7 +149,7 @@
   }
   function editStudent(studentId){
     const s=studentsById(studentId);if(!s)return;
-    const allLevels=[...SQUASH_LEVELS];if(s.level&&!allLevels.includes(s.level))allLevels.unshift(s.level);
+    const allLevels=[...SQUASH_LEVELS];
     show('Изменить ученика','КАРТОЧКА УЧЕНИКА',`<form id="edit-student-form">
       ${field('Имя',`<input id="edit-name" required maxlength="90" value="${esc(s.name)}">`)}
       ${field('Уровень сквоша',`<select id="edit-level"><option value="">Не указан</option>${allLevels.map(x=>`<option value="${esc(x)}" ${x===s.level?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
@@ -221,7 +221,7 @@
     const warn=$('stats-rate-warning');warn.hidden=!unpriced;warn.textContent=unpriced?`Групповых тренировок без подтверждённой ставки: ${unpriced}. Они пока не учтены в суммах.`:'';
   }
   function bind(){
-    initStats();$('tab-calendar').onclick=()=>showTab('calendar');$('tab-stats').onclick=()=>showTab('stats');window.visualViewport?.addEventListener('resize',syncModalViewport);$('add-session').onclick=()=>sessionForm();$('add-on-selected').onclick=()=>sessionForm();$('cancel-session').onclick=()=>pickFor('cancel');$('delete-session').onclick=()=>pickFor('delete');$('add-student').onclick=showAddStudent;$('tools-btn').onclick=showTools;
+    initStats();$('tab-calendar').onclick=()=>showTab('calendar');$('tab-stats').onclick=()=>showTab('stats');window.visualViewport?.addEventListener('resize',syncModalViewport);$('add-session').onclick=()=>sessionForm();$('add-on-selected').onclick=()=>sessionForm();$('delete-session').onclick=()=>pickFor('delete');$('add-student').onclick=showAddStudent;$('tools-btn').onclick=showTools;
     $('view-month').onclick=()=>{view='month';cursor=dateObj(selected);renderCalendar()};$('view-week').onclick=()=>{view='week';cursor=dateObj(selected);renderCalendar()};
     $('prev-period').onclick=()=>{cursor=view==='month'?new Date(cursor.getFullYear(),cursor.getMonth()-1,1):addDays(cursor,-7);renderCalendar()};$('next-period').onclick=()=>{cursor=view==='month'?new Date(cursor.getFullYear(),cursor.getMonth()+1,1):addDays(cursor,7);renderCalendar()};$('today').onclick=()=>{selected=dateKey(today);cursor=new Date(today.getFullYear(),today.getMonth(),today.getDate());render()};
     $('calendar-grid').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;cursor=dateObj(selected);render()});$('day-sessions').addEventListener('click',e=>{const b=e.target.closest('[data-session]');if(b)sessionDetail(b.dataset.session)});
