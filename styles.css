@@ -103,3 +103,33 @@ html,body{min-height:100%;}
   .actions>.action{padding:15px 12px;min-height:127px}
   .actions>.action>span:nth-child(2){font-size:clamp(12px,3.5vw,15px)}
 }
+
+/* iPhone / mobile safe area: reserve at least ~5 mm (20 CSS px) above
+   both the app header and every dialog, plus more on notched devices.
+   Custom property is overridable for automated notch testing. */
+@media(max-width:760px){
+ :root{--app-safe-top:max(20px, env(safe-area-inset-top, 0px))}
+ .app-shell{padding-top:var(--app-safe-top)}
+ .modal-backdrop{
+   padding-top:var(--app-safe-top);
+   padding-bottom:0;
+   align-items:flex-end;
+ }
+ .modal{
+   height:calc(var(--modal-viewport, 100dvh) - var(--app-safe-top) - 10px);
+   max-height:calc(var(--modal-viewport, 100dvh) - var(--app-safe-top) - 10px);
+   min-height:0;
+ }
+ .modal-head{gap:10px;align-items:center}
+ .modal-head>div{min-width:0}
+ .modal-close{
+   flex:0 0 44px;
+   width:44px;
+   height:44px;
+   min-width:44px;
+   min-height:44px;
+   line-height:1;
+   font-size:28px;
+   touch-action:manipulation;
+ }
+}

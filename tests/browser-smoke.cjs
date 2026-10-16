@@ -25,6 +25,22 @@ const { chromium } = require('playwright-core');
   if(!await page.locator('#period-label').innerText()||await page.locator('.calendar-day').count()<14)throw Error('Custom date rendering failed');
   await page.locator('#add-session').click();
   if(!await page.locator('#modal-backdrop').isVisible())throw Error('Booking modal does not open');
+  // Reproduce an iPhone-like top inset and check that the modal close
+  // control is fully reachable below the status bar.
+  await page.evaluate(()=>document.documentElement.style.setProperty('--app-safe-top','59px'));
+  await page.locator('#close-modal').waitFor({state:'visible'});
+  const closeRect=await page.locator('#close-modal').boundingBox();
+  const modalRect=await page.locator('.modal').boundingBox();
+  const appTopPadding=await page.locator('.app-shell').evaluate(el=>parseFloat(getComputedStyle(el).paddingTop));
+  if(!closeRect||!modalRect||closeRect.y<59||modalRect.y<59||appTopPadding<59){
+    throw Error('iPhone status bar overlaps app/modal: '+JSON.stringify({closeRect,modalRect,appTopPadding}));
+  }
+  if(closeRect.width<44||closeRect.height<44)throw Error('Close button is too small');
+  await page.locator('#close-modal').click();
+  if(await page.locator('#modal-backdrop').isVisible())throw Error('Close button failed on mobile');
+  await page.locator('#add-session').click();
+  const lessonLabel=await page.locator('#session-type option[value="first"]').innerText();
+  if(lessonLabel!=='Вводное')throw Error('Wrong first lesson label: '+lessonLabel);
   const price=await page.evaluate(()=>window.__squashDiagnostics?.priceOf('individual'));
   if(price!==1900)throw Error('Wrong individual price: '+price);
   if(errors.length)throw Error('Browser console errors: '+errors.join('|'));

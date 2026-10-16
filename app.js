@@ -7,7 +7,7 @@
   const WEEKDAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
   const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
   const MONTHS_HEAD = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
-  const TYPES = {first:'Первичная',individual:'Индивидуальная',group:'Групповая'};
+  const TYPES = {first:'Вводное',individual:'Индивидуальная',group:'Групповая'};
   const STATUSES = {planned:'Запланирована',done:'Проведена',cancelled:'Отменена'};
   // Squash grades vary by federation; these are practical club categories, not a universal ranking.
   const SQUASH_LEVELS = ['Pre-Beginner','Beginner','B'];
