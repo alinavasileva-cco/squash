@@ -36,6 +36,13 @@
   function nameOf(s){return (s.studentIds||[]).map(studentsById).filter(Boolean).map(x=>x.name).join(' + ')||s.label||((s.type==='group')?'Групповая тренировка':'Ученик не указан')}
   function titleOf(s){return nameOf(s)}
   function amountOf(s){if(s.type==='first')return 1200;if(s.type==='individual')return 1900;if(s.type==='group' && s.rateConfirmed && s.groupRate>0 && s.count>0)return s.groupRate*s.count;return null}
+
+  // Use the original session note in every view: never copy it into student data.
+  // Escape user text and preserve line breaks without rendering any HTML.
+  function sessionNoteMarkup(notes){
+    const text=String(notes??'');
+    return text.trim()?'<div class="session-note"><span class="session-note-label">Комментарий</span><span class="session-note-text">'+esc(text)+'</span></div>':'';
+  }
   function timeOf(s){return (s.start||'').slice(11,16) || '—:—'}
   function sessionsOn(k){return data.sessions.filter(s=>(s.start||'').slice(0,10)===k).sort((a,b)=>a.start.localeCompare(b.start))}
   function render(){renderCalendar();renderDay();renderStats()}
@@ -84,7 +91,7 @@
   function renderDay(){const group=sessionsOn(selected);$('selected-day-heading').textContent=`${fmtDay(selected)} · ${dow(selected)}`;
     if(!group.length){$('day-sessions').innerHTML='<div class="empty-state"><div><strong>В этот день нет тренировок</strong><br>Выбери другое число или создай запись.</div><span class="event-ball" aria-hidden="true"></span></div>';return}
     $('day-sessions').innerHTML=group.map(s=>{const amount=amountOf(s);const inf=[TYPES[s.type]||'Тренировка',STATUSES[s.status]||STATUSES.planned,amount===null?'Тариф не указан':money(amount)].join(' · ');
-      return `<div class="session-card"><span class="event-ball ${s.status==='cancelled'?'cancelled':s.status==='done'?'done':''}" aria-hidden="true"></span><div class="session-time">${esc(timeOf(s))}</div><div class="session-info"><div class="session-title ${s.status==='cancelled'?'cancelled':''}">${esc(titleOf(s))}</div><div class="session-sub">${esc(inf)}</div></div><button type="button" class="session-more" aria-label="Действия с тренировкой" data-session="${esc(s.id)}">···</button></div>`}).join('');
+      return `<div class="session-card"><span class="event-ball ${s.status==='cancelled'?'cancelled':s.status==='done'?'done':''}" aria-hidden="true"></span><div class="session-time">${esc(timeOf(s))}</div><div class="session-info"><div class="session-title ${s.status==='cancelled'?'cancelled':''}">${esc(titleOf(s))}</div><div class="session-sub">${esc(inf)}</div>${sessionNoteMarkup(s.notes)}</div><button type="button" class="session-more" aria-label="Действия с тренировкой" data-session="${esc(s.id)}">···</button></div>`}).join('');
   }
   function show(title,kicker,content){
     $('modal-title').textContent=title;$('modal-kicker').textContent=kicker||'SQUASH HUB';
@@ -167,7 +174,7 @@
     $('existing-students').innerHTML=data.students.length?`<span class="muted">Уже в списке: ${data.students.length}</span><div class="student-list" style="margin-top:9px">${data.students.map(s=>`<button data-student-detail="${esc(s.id)}"><strong>${esc(s.name)}</strong><small>${esc(s.level||'Уровень не указан')}</small></button>`).join('')}</div>`:'';
     document.querySelectorAll('[data-student-detail]').forEach(b=>b.onclick=()=>studentDetail(b.dataset.studentDetail));
   }
-  function studentDetail(studentId){const s=studentsById(studentId);if(!s)return;const ss=data.sessions.filter(x=>(x.studentIds||[]).includes(studentId));show(s.name,'КАРТОЧКА УЧЕНИКА',`<div class="simple-note">${esc(s.level||'Уровень не указан')} ${s.frequency?` · ${esc(s.frequency)}`:''}</div><p><strong>Последний материал:</strong> ${esc(s.lastDrill||'—')}</p><p><strong>Заметки:</strong> ${esc(s.notes||'—')}</p><p><strong>Тренировок:</strong> ${ss.length}</p><button type="button" class="btn btn-secondary" id="edit-student">Изменить уровень и заметки</button><div class="student-list">${ss.slice().sort((a,b)=>b.start.localeCompare(a.start)).map(x=>`<button data-session="${esc(x.id)}"><strong>${esc(fmtDay(x.start))} · ${esc(timeOf(x))}</strong><small>${esc(TYPES[x.type])} · ${esc(STATUSES[x.status])}</small></button>`).join('')}</div><div class="modal-actions"><button class="btn btn-secondary" data-close>Закрыть</button></div>`);
+  function studentDetail(studentId){const s=studentsById(studentId);if(!s)return;const ss=data.sessions.filter(x=>(x.studentIds||[]).includes(studentId));show(s.name,'КАРТОЧКА УЧЕНИКА',`<div class="simple-note">${esc(s.level||'Уровень не указан')} ${s.frequency?` · ${esc(s.frequency)}`:''}</div><p><strong>Последний материал:</strong> ${esc(s.lastDrill||'—')}</p><p><strong>Заметки:</strong> ${esc(s.notes||'—')}</p><p><strong>Тренировок:</strong> ${ss.length}</p><button type="button" class="btn btn-secondary" id="edit-student">Изменить уровень и заметки</button><div class="student-list">${ss.slice().sort((a,b)=>b.start.localeCompare(a.start)).map(x=>`<button data-session="${esc(x.id)}"><strong>${esc(fmtDay(x.start))} · ${esc(timeOf(x))}</strong><small>${esc(TYPES[x.type])} · ${esc(STATUSES[x.status])}</small>${sessionNoteMarkup(x.notes)}</button>`).join('')}</div><div class="modal-actions"><button class="btn btn-secondary" data-close>Закрыть</button></div>`);
     document.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>sessionDetail(b.dataset.session));
     $('edit-student').onclick=()=>editStudent(studentId);
   }

@@ -133,3 +133,47 @@ html,body{min-height:100%;}
    touch-action:manipulation;
  }
 }
+
+/* Complete session commentary in the daily workout list and student history.
+   Notes remain independent from the student's personal notes field. */
+.session-note{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  min-width:0;
+  max-width:100%;
+  margin-top:9px;
+  padding:9px 11px;
+  border-radius:9px;
+  background:#f7f7f1;
+  color:#53584f;
+  text-align:left;
+}
+.session-note-label{
+  display:block;
+  font-size:10px;
+  line-height:1.4;
+  font-weight:800;
+  color:#777d71;
+  letter-spacing:.05em;
+  margin-bottom:3px;
+}
+.session-note-text{
+  display:block;
+  width:100%;
+  font-size:13px;
+  line-height:1.5;
+  font-weight:500;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  color:#343b32;
+}
+.student-list button .session-note{margin-top:10px;}
+.session-card:has(.session-note){align-items:flex-start;}
+@media(max-width:760px){
+ .session-card:has(.session-note){gap:7px;}
+ .session-card .session-note{padding:8px 9px;}
+ .session-card .session-note-text{font-size:12px;}
+ .student-list button .session-note-text{font-size:13px;}
+}

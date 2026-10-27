@@ -43,6 +43,45 @@ const { chromium } = require('playwright-core');
   if(lessonLabel!=='Вводное')throw Error('Wrong first lesson label: '+lessonLabel);
   const price=await page.evaluate(()=>window.__squashDiagnostics?.priceOf('individual'));
   if(price!==1900)throw Error('Wrong individual price: '+price);
+
+  // Session notes must be visible, multiline, safe, and identical across
+  // the daily training list and the linked student's workout history.
+  await page.locator('#close-modal').click();
+  const fixtureDate = await page.evaluate(()=>{
+    const d=new Date();
+    return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+  });
+  const originalNote='Боусты и выпад\nНужна работа с ногами <b>без HTML</b>';
+  const secondNote='Повторить подготовку\nПроверить подачу';
+  await page.evaluate(({day,note1,note2})=>{
+    localStorage.setItem('squash-hub-coach-v1',JSON.stringify({
+      version:1,
+      students:[{id:'qa-mila',name:'Мила',level:'Beginner',lastDrill:'Боусты',frequency:'раз в неделю',notes:''}],
+      sessions:[
+        {id:'qa-session-1',studentIds:['qa-mila'],start:day+'T18:00',status:'done',type:'individual',notes:note1},
+        {id:'qa-session-2',studentIds:['qa-mila'],start:day+'T19:00',status:'planned',type:'individual',notes:note2},
+        {id:'qa-session-3',studentIds:['qa-mila'],start:day+'T20:00',status:'planned',type:'individual',notes:''}
+      ]
+    }));
+  },{day:fixtureDate,note1:originalNote,note2:secondNote});
+  await page.reload({waitUntil:'networkidle'});
+  await page.locator('#view-month').click();
+  await page.locator('[data-day="'+fixtureDate+'"]').click();
+  const notesInDay=page.locator('#day-sessions .session-note-text');
+  if(await notesInDay.count()!==2)throw Error('Daily list has wrong number of notes');
+  const dayNotes=await notesInDay.allTextContents();
+  if(dayNotes[0]!==originalNote||dayNotes[1]!==secondNote)throw Error('Daily notes differ from saved session notes: '+JSON.stringify(dayNotes));
+  if(await page.locator('#day-sessions b').count()!==0)throw Error('Session note was interpreted as HTML');
+  const cssWhiteSpace=await notesInDay.first().evaluate(el=>getComputedStyle(el).whiteSpace);
+  if(cssWhiteSpace!=='pre-wrap')throw Error('Session notes lose line breaks: '+cssWhiteSpace);
+  await page.locator('#add-student').click();
+  await page.locator('[data-student-detail="qa-mila"]').click();
+  const studentNotes=page.locator('.student-list .session-note-text');
+  if(await studentNotes.count()!==2)throw Error('Student history has wrong number of notes');
+  const historyNotes=await studentNotes.allTextContents();
+  if(!historyNotes.includes(originalNote)||!historyNotes.includes(secondNote))throw Error('Student notes do not match session notes');
+  if(await page.locator('.student-list b').count()!==0)throw Error('Student note interpreted as HTML');
+  console.log('PASS: full session comments in daily workout list and student history; line breaks preserved and HTML escaped.');
   if(errors.length)throw Error('Browser console errors: '+errors.join('|'));
   console.log('PASS: Calendar '+month+', '+count+' days, 2 equally sized side-by-side buttons, custom range, booking, price 1900 RUB.');
   await browser.close();
